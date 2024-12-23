@@ -1,3 +1,4 @@
+mod config;
 mod cli;
 mod file_processor;
 mod gitignore_helper;
