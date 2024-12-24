@@ -33,17 +33,83 @@ impl FileProcessor {
     }
 
     pub fn process(&self) {
+        if self.args.sort_by_size {
+            self.process_with_size_sorting();
+        } else {
+            // existing processing logic
+            for pattern in &self.args.patterns {
+                let path = Path::new(pattern);
+                if path.exists() {
+                    if path.is_dir() {
+                        self.process_directory(path);
+                    } else {
+                        self.process_single_file(path);
+                    }
+                } else {
+                    self.process_glob_pattern(pattern);
+                }
+            }
+        }
+    }
+
+    fn process_with_size_sorting(&self) {
+        let mut file_sizes: Vec<(PathBuf, usize)> = Vec::new();
+
+        // Collect all matching files and their sizes
         for pattern in &self.args.patterns {
             let path = Path::new(pattern);
             if path.exists() {
                 if path.is_dir() {
-                    self.process_directory(path);
+                    self.collect_files_with_sizes(path, &mut file_sizes);
                 } else {
-                    self.process_single_file(path);
+                    if let Ok(size) = fs::metadata(path).map(|m| m.len() as usize) {
+                        file_sizes.push((path.to_path_buf(), size));
+                    }
                 }
             } else {
-                // Treat as a glob pattern
-                self.process_glob_pattern(pattern);
+                self.collect_files_from_glob(pattern, &mut file_sizes);
+            }
+        }
+
+        // Sort files by size (largest first)
+        file_sizes.sort_by(|a, b| b.1.cmp(&a.1));
+
+        // Print files and their sizes
+        for (path, size) in file_sizes {
+            if let Ok(relative_path) = path.strip_prefix(&self.working_dir) {
+                println!("# File: ./{} ({} bytes)", relative_path.display(), size);
+            } else {
+                println!("# File: {} ({} bytes)", path.display(), size);
+            }
+        }
+    }
+
+    fn collect_files_from_glob(&self, pattern: &str, files: &mut Vec<(PathBuf, usize)>) {
+        let regex = self.pattern_matcher.glob_to_regex(pattern);
+        let walker = self.create_walker();
+        
+        for entry in walker.into_iter().filter_entry(|e| self.should_process_entry(e.path())) {
+            if let Ok(entry) = entry {
+                let path = entry.path();
+                if path.is_file() && regex.is_match(path.to_str().unwrap_or("")) {
+                    if let Ok(size) = fs::metadata(path).map(|m| m.len() as usize) {
+                        files.push((path.to_path_buf(), size));
+                    }
+                }
+            }
+        }
+    }
+
+    fn collect_files_with_sizes(&self, dir: &Path, files: &mut Vec<(PathBuf, usize)>) {
+        let walker = WalkDir::new(dir).into_iter();
+        for entry in walker.filter_entry(|e| self.should_process_entry(e.path())) {
+            if let Ok(entry) = entry {
+                let path = entry.path();
+                if path.is_file() {
+                    if let Ok(size) = fs::metadata(path).map(|m| m.len() as usize) {
+                        files.push((path.to_path_buf(), size));
+                    }
+                }
             }
         }
     }

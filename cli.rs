@@ -7,6 +7,7 @@ pub struct CliArgs {
     pub github_url: Option<String>,
     pub show_version: bool,
     pub files_only: bool,
+    pub sort_by_size: bool,
 }
 
 impl CliArgs {
@@ -19,6 +20,7 @@ impl CliArgs {
         let mut show_version = false;
         let mut i = 1;
         let mut files_only = false;
+        let mut sort_by_size = false;
 
         while i < args.len() {
             match args[i].as_str() {
@@ -26,6 +28,7 @@ impl CliArgs {
                 "-i" => ignore_gitignore = true,
                 "--files-only" => files_only = true,
                 "-v" | "--version" => show_version = true,
+                "--sort-size" => sort_by_size = true,
                 "--url" => {
                     if i + 1 < args.len() {
                         github_url = Some(args[i + 1].clone());
@@ -53,6 +56,7 @@ impl CliArgs {
             github_url,
             show_version,
             files_only,
+            sort_by_size,
         }
     }
 
@@ -68,6 +72,7 @@ impl CliArgs {
         println!("  -r                  Search recursively");
         println!("  -i                  Ignore .gitignore (include all files)");
         println!("  --files-only        Only show file paths without content");
+        println!("  --sort-size         Sort files by content size (largest first)");
         println!("  -v, --version       Show version information");
         println!("\nExamples:");
         println!("  {} --url 'https://github.com/org/repo/tree/main/path' -r", program_name);
