@@ -5,12 +5,14 @@ use walkdir::WalkDir;
 use crate::cli::CliArgs;
 use crate::gitignore_helper::GitignoreHelper;
 use crate::pattern_matcher::PatternMatcher;
+use crate::config::Config;
 
 pub struct FileProcessor {
     args: CliArgs,
     gitignore: Option<ignore::gitignore::Gitignore>,
     pattern_matcher: PatternMatcher,
     working_dir: PathBuf,
+    config: Config,
 }
 
 impl FileProcessor {
@@ -26,6 +28,7 @@ impl FileProcessor {
             gitignore,
             pattern_matcher: PatternMatcher::new(),
             working_dir,
+            config: Config::load(),
         }
     }
 
@@ -80,6 +83,14 @@ impl FileProcessor {
     }
 
     fn should_process_entry(&self, path: &Path) -> bool {
+        // Convert path to string for config checking
+        let path_str = path.to_str().unwrap_or("");
+
+        // Check config ignore patterns
+        if self.config.should_ignore(path_str) {
+            return false;
+        }
+
         // First check if it's a .git directory or within one
         if path.components().any(|c| c.as_os_str() == ".git") {
             return false;
@@ -95,12 +106,14 @@ impl FileProcessor {
 
     fn process_single_file(&self, path: &Path) {
         println!("# File: {}", path.display());
-        match fs::read_to_string(path) {
-            Ok(contents) => {
-                println!("{}", contents);
-                println!("\n=====================\n");
+        if !self.args.files_only {
+            match fs::read_to_string(path) {
+                Ok(contents) => {
+                    println!("{}", contents);
+                    println!("\n=====================\n");
+                }
+                Err(_) => println!("Error reading file: {}", path.display()),
             }
-            Err(_) => println!("Error reading file: {}", path.display()),
         }
     }
 }

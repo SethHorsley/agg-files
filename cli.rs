@@ -6,6 +6,7 @@ pub struct CliArgs {
     pub patterns: Vec<String>,
     pub github_url: Option<String>,
     pub show_version: bool,
+    pub files_only: bool,
 }
 
 impl CliArgs {
@@ -17,11 +18,13 @@ impl CliArgs {
         let mut github_url = None;
         let mut show_version = false;
         let mut i = 1;
+        let mut files_only = false;
 
         while i < args.len() {
             match args[i].as_str() {
                 "-r" => recursive = true,
                 "-i" => ignore_gitignore = true,
+                "--files-only" => files_only = true,
                 "-v" | "--version" => show_version = true,
                 "--url" => {
                     if i + 1 < args.len() {
@@ -49,6 +52,7 @@ impl CliArgs {
             patterns,
             github_url,
             show_version,
+            files_only,
         }
     }
 
@@ -63,6 +67,7 @@ impl CliArgs {
         println!("  --url <github_url>  GitHub repository URL");
         println!("  -r                  Search recursively");
         println!("  -i                  Ignore .gitignore (include all files)");
+        println!("  --files-only        Only show file paths without content");
         println!("  -v, --version       Show version information");
         println!("\nExamples:");
         println!("  {} --url 'https://github.com/org/repo/tree/main/path' -r", program_name);
